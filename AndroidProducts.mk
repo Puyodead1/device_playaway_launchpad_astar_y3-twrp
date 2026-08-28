@@ -6,9 +6,9 @@
 #
 
 PRODUCT_MAKEFILES := \
-    $(LOCAL_DIR)/omni_astar-y3.mk
+    $(LOCAL_DIR)/omni_astar_y3.mk
 
 COMMON_LUNCH_CHOICES := \
-    omni_astar-y3-user \
-    omni_astar-y3-userdebug \
-    omni_astar-y3-eng
+    omni_astar_y3-user \
+    omni_astar_y3-userdebug \
+    omni_astar_y3-eng
