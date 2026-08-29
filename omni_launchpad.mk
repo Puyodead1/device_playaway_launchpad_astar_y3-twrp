@@ -12,11 +12,11 @@ $(call inherit-product, $(SRC_TARGET_DIR)/product/full_base_telephony.mk)
 $(call inherit-product, vendor/omni/config/common.mk)
 
 # Inherit from astar-y3 device
-$(call inherit-product, device/softwinner/astar-y3/device.mk)
+$(call inherit-product, device/playaway/launchpad/device.mk)
 
-PRODUCT_DEVICE := astar-y3
-PRODUCT_NAME := omni_astar_y3
-PRODUCT_BRAND := Allwinner
+PRODUCT_DEVICE := launchpad
+PRODUCT_NAME := omni_launchpad
+PRODUCT_BRAND := Playaway
 PRODUCT_MODEL := QUAD-CORE A33 y3
 PRODUCT_MANUFACTURER := softwinner
 

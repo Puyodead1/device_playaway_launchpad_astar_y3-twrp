@@ -6,9 +6,9 @@
 #
 
 PRODUCT_MAKEFILES := \
-    $(LOCAL_DIR)/omni_astar_y3.mk
+    $(LOCAL_DIR)/omni_launchpad.mk
 
 COMMON_LUNCH_CHOICES := \
-    omni_astar_y3-user \
-    omni_astar_y3-userdebug \
-    omni_astar_y3-eng
+    omni_launchpad-user \
+    omni_launchpad-userdebug \
+    omni_launchpad-eng

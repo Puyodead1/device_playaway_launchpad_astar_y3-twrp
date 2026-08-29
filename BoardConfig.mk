@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-DEVICE_PATH := device/softwinner/astar-y3
+DEVICE_PATH := device/playaway/launchpad
 
 # For building with minimal manifest
 ALLOW_MISSING_DEPENDENCIES := true
@@ -60,7 +60,7 @@ TARGET_USERIMAGES_USE_EXT4 := true
 
 # TWRP Configuration
 TW_THEME := landscape_mdpi
-TW_EXTRA_LANGUAGES := true
+TW_EXTRA_LANGUAGES := false
 TW_SCREEN_BLANK_ON_BOOT := true
 TW_INPUT_BLACKLIST := "hbtp_vm"
 TW_USE_TOOLBOX := true
