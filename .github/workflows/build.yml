@@ -209,6 +209,11 @@ jobs:
               make recoveryimage -j"$(nproc)"
             '
 
+      - name: Fix build output ownership
+        shell: bash
+        run: |
+          sudo chown -R "$(id -u):$(id -g)" workspace/out
+
       - name: Verify recovery image
         shell: bash
         run: |
