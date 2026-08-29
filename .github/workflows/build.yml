@@ -1,291 +1,291 @@
 name: Build TWRP for Playaway Launchpad
 
 on:
-  workflow_dispatch:
-  push:
-    branches:
-      - master
-      - main
+    workflow_dispatch:
+    push:
+        branches:
+            - master
+            - main
 
 permissions:
-  contents: read
+    contents: read
 
 env:
-  MANIFEST_URL: https://github.com/minimal-manifest-twrp/platform_manifest_twrp_omni.git
-  MANIFEST_BRANCH: twrp-4.4-deprecated
-  DEVICE_PATH: device/playaway/launchpad
-  DEVICE_NAME: launchpad
-  LUNCH_TARGET: omni_launchpad-eng
-  OUT_PATH: workspace/out/target/product/launchpad
+    MANIFEST_URL: https://github.com/minimal-manifest-twrp/platform_manifest_twrp_omni.git
+    MANIFEST_BRANCH: twrp-4.4-deprecated
+    DEVICE_PATH: device/playaway/launchpad
+    DEVICE_NAME: launchpad
+    LUNCH_TARGET: omni_launchpad-eng
+    OUT_PATH: workspace/out/target/product/launchpad
 
 jobs:
-  build:
-    name: TWRP 3.1.1 / Launchpad
-    runs-on: ubuntu-22.04
-    timeout-minutes: 120
+    build:
+        name: TWRP 3.1.1 / Launchpad
+        runs-on: ubuntu-22.04
+        timeout-minutes: 120
 
-    steps:
-      - name: Checkout device tree
-        uses: actions/checkout@v4
-        with:
-          path: device-tree
+        steps:
+            - name: Checkout device tree
+              uses: actions/checkout@v4
+              with:
+                  path: device-tree
 
-      - name: Install repo launcher
-        shell: bash
-        run: |
-          mkdir -p "$HOME/bin"
-          curl -fsSL https://storage.googleapis.com/git-repo-downloads/repo \
-            -o "$HOME/bin/repo"
-          chmod +x "$HOME/bin/repo"
-          echo "$HOME/bin" >> "$GITHUB_PATH"
+            - name: Install repo launcher
+              shell: bash
+              run: |
+                  mkdir -p "$HOME/bin"
+                  curl -fsSL https://storage.googleapis.com/git-repo-downloads/repo \
+                    -o "$HOME/bin/repo"
+                  chmod +x "$HOME/bin/repo"
+                  echo "$HOME/bin" >> "$GITHUB_PATH"
 
-      - name: Initialize TWRP source
-        shell: bash
-        run: |
-          mkdir -p workspace
-          cd workspace
+            - name: Initialize TWRP source
+              shell: bash
+              run: |
+                  mkdir -p workspace
+                  cd workspace
 
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
+                  git config --global user.name "GitHub Actions"
+                  git config --global user.email "actions@github.com"
 
-          "$HOME/bin/repo" init \
-            --depth=1 \
-            -u "$MANIFEST_URL" \
-            -b "$MANIFEST_BRANCH"
+                  "$HOME/bin/repo" init \
+                    --depth=1 \
+                    -u "$MANIFEST_URL" \
+                    -b "$MANIFEST_BRANCH"
 
-          # The minimal 4.4 manifest omits mksh, but the product build still requires it for /system/bin/sh.
-          mkdir -p .repo/local_manifests
-          cat > .repo/local_manifests/launchpad.xml <<'EOF'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <manifest>
-            <project
-              path="external/mksh"
-              name="platform/external/mksh"
-              remote="aosp"
-              revision="refs/tags/android-4.4.4_r1"
-              groups="pdk" />
-          </manifest>
-          EOF
+                  # The minimal 4.4 manifest omits mksh, but the product build still requires it for /system/bin/sh.
+                  mkdir -p .repo/local_manifests
+                  cat > .repo/local_manifests/launchpad.xml <<'EOF'
+                  <?xml version="1.0" encoding="UTF-8"?>
+                  <manifest>
+                    <project
+                      path="external/mksh"
+                      name="platform/external/mksh"
+                      remote="aosp"
+                      revision="refs/tags/android-4.4.4_r1"
+                      groups="pdk" />
+                  </manifest>
+                  EOF
 
-      - name: Sync TWRP source
-        shell: bash
-        run: |
-          cd workspace
-          "$HOME/bin/repo" sync \
-            -j"$(nproc)" \
-            --force-sync \
-            --no-clone-bundle
+            - name: Sync TWRP source
+              shell: bash
+              run: |
+                  cd workspace
+                  "$HOME/bin/repo" sync \
+                    -j"$(nproc)" \
+                    --force-sync \
+                    --no-clone-bundle
 
-      - name: Install Launchpad device tree
-        shell: bash
-        run: |
-          mkdir -p "workspace/$(dirname "$DEVICE_PATH")"
-          rm -rf "workspace/$DEVICE_PATH"
-          mkdir -p "workspace/$DEVICE_PATH"
+            - name: Install Launchpad device tree
+              shell: bash
+              run: |
+                  mkdir -p "workspace/$(dirname "$DEVICE_PATH")"
+                  rm -rf "workspace/$DEVICE_PATH"
+                  mkdir -p "workspace/$DEVICE_PATH"
 
-          rsync -a \
-            --exclude='.git' \
-            device-tree/ \
-            "workspace/$DEVICE_PATH/"
+                  rsync -a \
+                    --exclude='.git' \
+                    device-tree/ \
+                    "workspace/$DEVICE_PATH/"
 
-          test -f "workspace/$DEVICE_PATH/BoardConfig.mk"
-          test -f "workspace/$DEVICE_PATH/omni_launchpad.mk"
+                  test -f "workspace/$DEVICE_PATH/BoardConfig.mk"
+                  test -f "workspace/$DEVICE_PATH/omni_launchpad.mk"
 
-      - name: Apply Launchpad ramdisk constraints
-        shell: bash
-        run: |
-          # The A33 boot path used by this device truncates when the compressed recovery ramdisk grows beyond roughly 8 MiB.
-          LANG_DIR="workspace/bootable/recovery/gui/theme/common/languages"
+            - name: Apply Launchpad ramdisk constraints
+              shell: bash
+              run: |
+                  # The A33 boot path used by this device truncates when the compressed recovery ramdisk grows beyond roughly 8 MiB.
+                  LANG_DIR="workspace/bootable/recovery/gui/theme/common/languages"
 
-          if [ -d "$LANG_DIR" ]; then
-            find "$LANG_DIR" -type f ! -name 'en.xml' -delete
-          fi
+                  if [ -d "$LANG_DIR" ]; then
+                    find "$LANG_DIR" -type f ! -name 'en.xml' -delete
+                  fi
 
-          BOARD="workspace/$DEVICE_PATH/BoardConfig.mk"
-          if grep -q '^[[:space:]]*TW_EXTRA_LANGUAGES[[:space:]]*:=' "$BOARD"; then
-            sed -i \
-              's/^[[:space:]]*TW_EXTRA_LANGUAGES[[:space:]]*:=.*/TW_EXTRA_LANGUAGES := false/' \
-              "$BOARD"
-          else
-            printf '\n# Launchpad recovery ramdisk size constraint\nTW_EXTRA_LANGUAGES := false\n' \
-              >> "$BOARD"
-          fi
+                  BOARD="workspace/$DEVICE_PATH/BoardConfig.mk"
+                  if grep -q '^[[:space:]]*TW_EXTRA_LANGUAGES[[:space:]]*:=' "$BOARD"; then
+                    sed -i \
+                      's/^[[:space:]]*TW_EXTRA_LANGUAGES[[:space:]]*:=.*/TW_EXTRA_LANGUAGES := false/' \
+                      "$BOARD"
+                  else
+                    printf '\n# Launchpad recovery ramdisk size constraint\nTW_EXTRA_LANGUAGES := false\n' \
+                      >> "$BOARD"
+                  fi
 
-      - name: Restore ccache
-        uses: actions/cache@v4
-        with:
-          path: .ccache
-          key: twrp44-launchpad-ccache-${{ runner.os }}-${{ github.sha }}
-          restore-keys: |
-            twrp44-launchpad-ccache-${{ runner.os }}-
+            - name: Restore ccache
+              uses: actions/cache@v4
+              with:
+                  path: .ccache
+                  key: twrp44-launchpad-ccache-${{ runner.os }}-${{ github.sha }}
+                  restore-keys: |
+                      twrp44-launchpad-ccache-${{ runner.os }}-
 
-      - name: Build Ubuntu 14.04 toolchain image
-        shell: bash
-        run: |
-          cat > Dockerfile.twrp44 <<'EOF'
-          FROM ubuntu:14.04
+            - name: Build Ubuntu 14.04 toolchain image
+              shell: bash
+              run: |
+                  cat > Dockerfile.twrp44 <<'EOF'
+                  FROM ubuntu:14.04
 
-          ENV DEBIAN_FRONTEND=noninteractive
+                  ENV DEBIAN_FRONTEND=noninteractive
 
-          RUN apt-get -o Acquire::Check-Valid-Until=false update && \
-              apt-get install -y \
-                openjdk-7-jdk \
-                python \
-                python-dev \
-                git \
-                gnupg \
-                flex \
-                bison \
-                build-essential \
-                gcc-4.8-multilib \
-                g++-4.8-multilib \
-                zip \
-                curl \
-                wget \
-                rsync \
-                unzip \
-                zlib1g-dev \
-                libc6-dev \
-                libc6-dev-i386 \
-                lib32z1-dev \
-                lib32stdc++6 \
-                lib32ncurses5-dev \
-                libncurses5-dev \
-                libx11-dev \
-                libgl1-mesa-dev \
-                libxml2-utils \
-                xsltproc \
-                gperf \
-                ccache \
-                bc \
-                file \
-                schedtool \
-                pngcrush && \
-              rm -rf /var/lib/apt/lists/*
+                  RUN apt-get -o Acquire::Check-Valid-Until=false update && \
+                      apt-get install -y \
+                        openjdk-7-jdk \
+                        python \
+                        python-dev \
+                        git \
+                        gnupg \
+                        flex \
+                        bison \
+                        build-essential \
+                        gcc-4.8-multilib \
+                        g++-4.8-multilib \
+                        zip \
+                        curl \
+                        wget \
+                        rsync \
+                        unzip \
+                        zlib1g-dev \
+                        libc6-dev \
+                        libc6-dev-i386 \
+                        lib32z1-dev \
+                        lib32stdc++6 \
+                        lib32ncurses5-dev \
+                        libncurses5-dev \
+                        libx11-dev \
+                        libgl1-mesa-dev \
+                        libxml2-utils \
+                        xsltproc \
+                        gperf \
+                        ccache \
+                        bc \
+                        file \
+                        schedtool \
+                        pngcrush && \
+                      rm -rf /var/lib/apt/lists/*
 
-          RUN cd /tmp && \
-              wget -q https://ftp.gnu.org/gnu/make/make-3.82.tar.gz && \
-              tar xf make-3.82.tar.gz && \
-              cd make-3.82 && \
-              ./configure --prefix=/opt/make-3.82 && \
-              make -j"$(nproc)" && \
-              make install && \
-              rm -rf /tmp/make-3.82 /tmp/make-3.82.tar.gz
+                  RUN cd /tmp && \
+                      wget -q https://ftp.gnu.org/gnu/make/make-3.82.tar.gz && \
+                      tar xf make-3.82.tar.gz && \
+                      cd make-3.82 && \
+                      ./configure --prefix=/opt/make-3.82 && \
+                      make -j"$(nproc)" && \
+                      make install && \
+                      rm -rf /tmp/make-3.82 /tmp/make-3.82.tar.gz
 
-          ENV JAVA_HOME=/usr/lib/jvm/java-7-openjdk-amd64
-          ENV PATH=/opt/make-3.82/bin:/usr/lib/jvm/java-7-openjdk-amd64/bin:$PATH
-          ENV USE_CCACHE=1
-          ENV CCACHE_DIR=/ccache
+                  ENV JAVA_HOME=/usr/lib/jvm/java-7-openjdk-amd64
+                  ENV PATH=/opt/make-3.82/bin:/usr/lib/jvm/java-7-openjdk-amd64/bin:$PATH
+                  ENV USE_CCACHE=1
+                  ENV CCACHE_DIR=/ccache
 
-          WORKDIR /src
-          CMD ["/bin/bash"]
-          EOF
+                  WORKDIR /src
+                  CMD ["/bin/bash"]
+                  EOF
 
-          docker build -f Dockerfile.twrp44 -t twrp44-launchpad .
+                  docker build -f Dockerfile.twrp44 -t twrp44-launchpad .
 
-      - name: Build recovery
-        shell: bash
-        run: |
-          mkdir -p .ccache
+            - name: Build recovery
+              shell: bash
+              run: |
+                  mkdir -p .ccache
 
-          docker run --rm \
-            -v "$GITHUB_WORKSPACE/workspace:/src" \
-            -v "$GITHUB_WORKSPACE/.ccache:/ccache" \
-            twrp44-launchpad \
-            bash -lc '
-              set -e
-              cd /src
+                  docker run --rm \
+                    -v "$GITHUB_WORKSPACE/workspace:/src" \
+                    -v "$GITHUB_WORKSPACE/.ccache:/ccache" \
+                    twrp44-launchpad \
+                    bash -lc '
+                      set -e
+                      cd /src
 
-              echo "Python: $(python --version 2>&1)"
-              echo "Make:   $(make --version | head -n1)"
-              java -version
+                      echo "Python: $(python --version 2>&1)"
+                      echo "Make:   $(make --version | head -n1)"
+                      java -version
 
-              export USE_CCACHE=1
-              export CCACHE_DIR=/ccache
-              export ALLOW_MISSING_DEPENDENCIES=true
+                      export USE_CCACHE=1
+                      export CCACHE_DIR=/ccache
+                      export ALLOW_MISSING_DEPENDENCIES=true
 
-              source build/envsetup.sh
-              lunch omni_launchpad-eng
-              make recoveryimage -j"$(nproc)"
-            '
+                      source build/envsetup.sh
+                      lunch omni_launchpad-eng
+                      make recoveryimage -j"$(nproc)"
+                    '
 
-      - name: Fix build output ownership
-        shell: bash
-        run: |
-          sudo chown -R "$(id -u):$(id -g)" workspace/out
+            - name: Fix build output ownership
+              shell: bash
+              run: |
+                  sudo chown -R "$(id -u):$(id -g)" workspace/out
 
-      - name: Verify recovery image
-        shell: bash
-        run: |
-          IMAGE="$OUT_PATH/recovery.img"
-          test -f "$IMAGE"
+            - name: Verify recovery image
+              shell: bash
+              run: |
+                  IMAGE="$OUT_PATH/recovery.img"
+                  test -f "$IMAGE"
 
-          python3 <<'PY'
-          import struct
-          from pathlib import Path
+                  python3 <<'PY'
+                  import struct
+                  from pathlib import Path
 
-          image = Path("workspace/out/target/product/launchpad/recovery.img")
-          with image.open("rb") as f:
-              header = f.read(48)
+                  image = Path("workspace/out/target/product/launchpad/recovery.img")
+                  with image.open("rb") as f:
+                      header = f.read(48)
 
-          (
-              magic,
-              kernel_size,
-              kernel_addr,
-              ramdisk_size,
-              ramdisk_addr,
-              second_size,
-              second_addr,
-              tags_addr,
-              page_size,
-              dt_size,
-              unused,
-          ) = struct.unpack("<8s10I", header)
+                  (
+                      magic,
+                      kernel_size,
+                      kernel_addr,
+                      ramdisk_size,
+                      ramdisk_addr,
+                      second_size,
+                      second_addr,
+                      tags_addr,
+                      page_size,
+                      dt_size,
+                      unused,
+                  ) = struct.unpack("<8s10I", header)
 
-          assert magic == b"ANDROID!", magic
-          assert page_size == 2048, page_size
-          assert second_size == 0, second_size
-          assert dt_size == 0, dt_size
-          assert kernel_addr == 0x40008000, hex(kernel_addr)
-          assert ramdisk_addr == 0x41000000, hex(ramdisk_addr)
-          assert tags_addr == 0x40000100, hex(tags_addr)
+                  assert magic == b"ANDROID!", magic
+                  assert page_size == 2048, page_size
+                  assert second_size == 0, second_size
+                  assert dt_size == 0, dt_size
+                  assert kernel_addr == 0x40008000, hex(kernel_addr)
+                  assert ramdisk_addr == 0x41000000, hex(ramdisk_addr)
+                  assert tags_addr == 0x40000100, hex(tags_addr)
 
-          print(f"Kernel size:  {kernel_size} bytes")
-          print(f"Ramdisk size: {ramdisk_size} bytes")
-          print(f"Image size:   {image.stat().st_size} bytes")
+                  print(f"Kernel size:  {kernel_size} bytes")
+                  print(f"Ramdisk size: {ramdisk_size} bytes")
+                  print(f"Image size:   {image.stat().st_size} bytes")
 
-          if ramdisk_size >= 8 * 1024 * 1024:
-              raise SystemExit(
-                  f"Recovery ramdisk is {ramdisk_size} bytes; "
-                  "Launchpad build must remain below 8 MiB"
-              )
+                  if ramdisk_size >= 8 * 1024 * 1024:
+                      raise SystemExit(
+                          f"Recovery ramdisk is {ramdisk_size} bytes; "
+                          "Launchpad build must remain below 8 MiB"
+                      )
 
-          if image.stat().st_size > 32 * 1024 * 1024:
-              raise SystemExit("recovery.img exceeds the 32 MiB recovery partition")
-          PY
+                  if image.stat().st_size > 32 * 1024 * 1024:
+                      raise SystemExit("recovery.img exceeds the 32 MiB recovery partition")
+                  PY
 
-          sha256sum "$IMAGE" | tee "$OUT_PATH/recovery.img.sha256"
-          md5sum "$IMAGE" | tee "$OUT_PATH/recovery.img.md5"
+                  sha256sum "$IMAGE" | tee "$OUT_PATH/recovery.img.sha256"
+                  md5sum "$IMAGE" | tee "$OUT_PATH/recovery.img.md5"
 
-      - name: Build summary
-        shell: bash
-        run: |
-          {
-            echo "## Playaway Launchpad TWRP build"
-            echo
-            echo '```'
-            cat "$OUT_PATH/recovery.img.sha256"
-            cat "$OUT_PATH/recovery.img.md5"
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
+            - name: Build summary
+              shell: bash
+              run: |
+                  {
+                    echo "## Playaway Launchpad TWRP build"
+                    echo
+                    echo '```'
+                    cat "$OUT_PATH/recovery.img.sha256"
+                    cat "$OUT_PATH/recovery.img.md5"
+                    echo '```'
+                  } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Upload recovery image
-        uses: actions/upload-artifact@v4
-        with:
-          name: twrp-playaway-launchpad-${{ github.sha }}
-          path: |
-            workspace/out/target/product/launchpad/recovery.img
-            workspace/out/target/product/launchpad/recovery.img.sha256
-            workspace/out/target/product/launchpad/recovery.img.md5
-          if-no-files-found: error
-          retention-days: 14
+            - name: Upload recovery image
+              uses: actions/upload-artifact@v4
+              with:
+                  name: twrp-playaway-launchpad-${{ github.sha }}
+                  path: |
+                      workspace/out/target/product/launchpad/recovery.img
+                      workspace/out/target/product/launchpad/recovery.img.sha256
+                      workspace/out/target/product/launchpad/recovery.img.md5
+                  if-no-files-found: error
+                  retention-days: 14
