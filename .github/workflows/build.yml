@@ -8,7 +8,7 @@ on:
             - main
 
 permissions:
-    contents: read
+    contents: write
 
 env:
     MANIFEST_URL: https://github.com/minimal-manifest-twrp/platform_manifest_twrp_omni.git
@@ -267,25 +267,19 @@ jobs:
                   sha256sum "$IMAGE" | tee "$OUT_PATH/recovery.img.sha256"
                   md5sum "$IMAGE" | tee "$OUT_PATH/recovery.img.md5"
 
-            - name: Build summary
-              shell: bash
+            - name: Generate checksums
               run: |
-                  {
-                    echo "## Playaway Launchpad TWRP build"
-                    echo
-                    echo '```'
-                    cat "$OUT_PATH/recovery.img.sha256"
-                    cat "$OUT_PATH/recovery.img.md5"
-                    echo '```'
-                  } >> "$GITHUB_STEP_SUMMARY"
+                cd workspace/out/target/product/launchpad
+                sha256sum recovery.img > recovery.img.sha256
+                md5sum recovery.img > recovery.img.md5
 
-            - name: Upload recovery image
-              uses: actions/upload-artifact@v4
+            - name: Create Release
+              uses: softprops/action-gh-release@v2
               with:
-                  name: twrp-playaway-launchpad-${{ github.sha }}
-                  path: |
-                      workspace/out/target/product/launchpad/recovery.img
-                      workspace/out/target/product/launchpad/recovery.img.sha256
-                      workspace/out/target/product/launchpad/recovery.img.md5
-                  if-no-files-found: error
-                  retention-days: 14
+                tag_name: build-${{ github.run_number }}
+                name: TWRP Build ${{ github.run_number }}
+                generate_release_notes: true
+                files: |
+                  workspace/out/target/product/launchpad/recovery.img
+                  workspace/out/target/product/launchpad/recovery.img.sha256
+                  workspace/out/target/product/launchpad/recovery.img.md5
